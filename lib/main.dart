@@ -223,31 +223,46 @@ class _TryOnPageState extends State<TryOnPage> {
   Widget _setupView() => SingleChildScrollView(
     padding: const EdgeInsets.all(16),
     child: Column(children: [
-      // Person photo
-      _SectionHeader(step: '1', label: 'Person Photo'),
-      const SizedBox(height: 10),
-      _ImageSelector(
-        image: _personPhoto,
-        aspectRatio: 3 / 4,
-        placeholder: Icons.person_add_alt_1,
-        hint: 'Tap to select person photo',
-        onPick: (src) => _pick(true, src),
-        disabled: _isProcessing,
-      ),
-      const SizedBox(height: 24),
-      _divider(),
-      const SizedBox(height: 20),
-
-      // Garment image
-      _SectionHeader(step: '2', label: 'Clothing Image'),
-      const SizedBox(height: 10),
-      _ImageSelector(
-        image: _garmentImage,
-        aspectRatio: 1.0,
-        placeholder: Icons.checkroom,
-        hint: 'Tap to select clothing\n(flat-lay or product photo)',
-        onPick: (src) => _pick(false, src),
-        disabled: _isProcessing,
+      // Person photo + Clothing image side by side
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SectionHeader(step: '1', label: 'Person Photo'),
+                const SizedBox(height: 10),
+                _ImageSelector(
+                  image: _personPhoto,
+                  aspectRatio: 3 / 4,
+                  placeholder: Icons.person_add_alt_1,
+                  hint: 'Tap to select person photo',
+                  onPick: (src) => _pick(true, src),
+                  disabled: _isProcessing,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SectionHeader(step: '2', label: 'Clothing Image'),
+                const SizedBox(height: 10),
+                _ImageSelector(
+                  image: _garmentImage,
+                  aspectRatio: 3 / 4,
+                  placeholder: Icons.checkroom,
+                  hint: 'Tap to select clothing\n(flat-lay or product photo)',
+                  onPick: (src) => _pick(false, src),
+                  disabled: _isProcessing,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
       const SizedBox(height: 24),
       _divider(),
@@ -442,9 +457,12 @@ class _SectionHeader extends StatelessWidget {
                 fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
       ),
       const SizedBox(width: 10),
-      Text(label,
-          style: const TextStyle(fontSize: 17,
-              fontWeight: FontWeight.bold, letterSpacing: 0.3)),
+      Flexible(
+        child: Text(label,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 14,
+                fontWeight: FontWeight.bold, letterSpacing: 0.3)),
+      ),
     ],
   );
 }
@@ -507,21 +525,11 @@ class _ImageSelector extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _PickButton(
-                icon: Icons.photo_library,
-                label: 'Gallery',
-                onTap: disabled ? null : () => onPick(ImageSource.gallery)),
-            const SizedBox(width: 12),
-            _PickButton(
-                icon: Icons.camera_alt,
-                label: 'Camera',
-                onTap: disabled ? null : () => onPick(ImageSource.camera)),
-          ],
-        ),
+        const SizedBox(height: 8),
+        _PickButton(
+            icon: Icons.camera_alt,
+            label: 'Camera',
+            onTap: disabled ? null : () => onPick(ImageSource.camera)),
       ],
     );
   }
@@ -540,8 +548,9 @@ class _PickButton extends StatelessWidget {
         icon: Icon(icon, size: 16),
         label: Text(label),
         style: ElevatedButton.styleFrom(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          minimumSize: const Size(double.infinity, 38),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       );
 }
