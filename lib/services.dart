@@ -57,12 +57,12 @@ class VirtualClozetService {
           'person_image', personPhoto.path));
       request.files.add(await http.MultipartFile.fromPath(
           'garment_image', garmentImage.path));
-      request.fields['cloth_type']     = clothType;
+      request.fields['category']      = _toFashnCategory(clothType);
       request.fields['num_steps']      = numSteps.toString();
       request.fields['guidance_scale'] = guidanceScale.toString();
       request.fields['seed']           = seed.toString();
 
-      onProgress?.call('Running CatVTON 2D try-on...');
+      onProgress?.call('Running FASHN VTON 2D try-on...');
 
       final streamed = await request.send().timeout(const Duration(minutes: 8));
       final response = await http.Response.fromStream(streamed);
@@ -81,13 +81,21 @@ class VirtualClozetService {
       }
 
       final tryon2d = base64Decode(data['tryon_2d_base64'] as String);
-      final glb     = base64Decode(data['glb_base64'] as String);
+
+      onProgress?.call('Downloading 3D model...');
+      final glbResp = await http
+          .get(Uri.parse(data['glb_url'] as String))
+          .timeout(const Duration(minutes: 2));
+      if (glbResp.statusCode != 200) {
+        onProgress?.call('GLB download failed: ${glbResp.statusCode}');
+        return null;
+      }
 
       onProgress?.call('Done! ${data['message']}');
 
       return TryOnResult(
         tryon2dBytes: tryon2d,
-        glbBytes: glb,
+        glbBytes: glbResp.bodyBytes,
         message: data['message'] as String,
       );
     } catch (e) {
@@ -102,5 +110,15 @@ class VirtualClozetService {
     final file = File('${dir.path}/tryon_model_${DateTime.now().millisecondsSinceEpoch}.glb');
     await file.writeAsBytes(glbBytes);
     return file;
+  }
+
+  // Maps Flutter cloth type values to FASHN backend category names
+  static String _toFashnCategory(String clothType) {
+    switch (clothType) {
+      case 'upper':  return 'tops';
+      case 'lower':  return 'bottoms';
+      case 'overall': return 'one-pieces';
+      default:       return 'tops';
+    }
   }
 }

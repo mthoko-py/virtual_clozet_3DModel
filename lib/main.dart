@@ -7,7 +7,6 @@
 
 import 'dart:io';
 import 'dart:typed_data';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
