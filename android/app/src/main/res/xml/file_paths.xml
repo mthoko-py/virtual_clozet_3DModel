@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <external-path name="image_picker_external" path="."/>
+    <external-cache-path name="image_picker_external_cache" path="."/>
+    <cache-path name="image_picker_cache" path="."/>
+</paths>
