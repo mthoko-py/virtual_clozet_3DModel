@@ -130,7 +130,11 @@ class _TryOnPageState extends State<TryOnPage> {
         _status       = result.message;
       });
     } else {
-      setState(() => _status = 'Try-on failed. Check console.');
+      // _status already contains the specific error from onProgress
+      if (!_status.startsWith('❌') && !_status.startsWith('Error') &&
+          !_status.startsWith('Server') && !_status.startsWith('GLB')) {
+        setState(() => _status = '❌ Try-on failed — check status above.');
+      }
     }
 
     setState(() => _isProcessing = false);
