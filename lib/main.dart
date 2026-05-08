@@ -68,8 +68,6 @@ class _TryOnPageState extends State<TryOnPage> {
   bool    _isProcessing = false;
   String  _clothType   = 'upper';
 
-  // UI tabs: 0=setup, 1=2D result, 2=3D model
-  int _resultTab = 0;
 
   @override
   void initState() {
@@ -102,13 +100,12 @@ class _TryOnPageState extends State<TryOnPage> {
       }
       _tryon2dBytes = null;
       _glbFile      = null;
-      _resultTab    = 0;
     });
   }
 
   Future<void> _runPipeline() async {
     if (_personPhoto == null || _garmentImage == null) return;
-    setState(() { _isProcessing = true; _resultTab = 0; });
+    setState(() => _isProcessing = true);
 
     final result = await _service.tryOn3D(
       personPhoto:  _personPhoto!,
@@ -126,11 +123,9 @@ class _TryOnPageState extends State<TryOnPage> {
       setState(() {
         _tryon2dBytes = result.tryon2dBytes;
         _glbFile      = glbFile;
-        _resultTab    = 2; // jump to 3D tab
         _status       = result.message;
       });
     } else {
-      // _status already contains the specific error from onProgress
       if (!_status.startsWith('❌') && !_status.startsWith('Error') &&
           !_status.startsWith('Server') && !_status.startsWith('GLB')) {
         setState(() => _status = '❌ Try-on failed — check status above.');
@@ -146,7 +141,6 @@ class _TryOnPageState extends State<TryOnPage> {
       _garmentImage = null;
       _tryon2dBytes = null;
       _glbFile      = null;
-      _resultTab    = 0;
       _status       = _connected
           ? '✅ Connected — upload images to begin'
           : '❌ Cannot connect. Update the URL in services.dart';
@@ -215,19 +209,10 @@ class _TryOnPageState extends State<TryOnPage> {
     ),
   );
 
-  Widget _buildBody() {
-    // If we have results, show tabbed view
-    if (_glbFile != null || _tryon2dBytes != null) {
-      return _resultView();
-    }
-    return _setupView();
-  }
-
-  // ── Setup view ─────────────────────────────────────────────
-  Widget _setupView() => SingleChildScrollView(
+  Widget _buildBody() => SingleChildScrollView(
     padding: const EdgeInsets.all(16),
     child: Column(children: [
-      // Person photo + Clothing image side by side
+      // ── Upload row ────────────────────────────────────────
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -269,17 +254,15 @@ class _TryOnPageState extends State<TryOnPage> {
         ],
       ),
       const SizedBox(height: 24),
-      _divider(),
+      Divider(color: Colors.grey.shade200, thickness: 1),
       const SizedBox(height: 20),
 
-      // Cloth type
+      // ── Controls ──────────────────────────────────────────
       _ClothTypeSelector(
         selected: _clothType,
         onChanged: _isProcessing ? null : (v) => setState(() => _clothType = v),
       ),
       const SizedBox(height: 28),
-
-      // Action buttons
       _ActionButtons(
         canRun: _personPhoto != null && _garmentImage != null
             && !_isProcessing && _connected,
@@ -287,80 +270,47 @@ class _TryOnPageState extends State<TryOnPage> {
         onTryOn: _runPipeline,
         onClear: _clear,
       ),
+
+      // ── Results (inline, appear when ready) ───────────────
+      if (_tryon2dBytes != null) ...[
+        const SizedBox(height: 32),
+        Divider(color: Colors.grey.shade200, thickness: 1),
+        const SizedBox(height: 16),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text('2D Try-On',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 10),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.memory(_tryon2dBytes!, fit: BoxFit.contain),
+        ),
+      ],
+
+      if (_glbFile != null) ...[
+        const SizedBox(height: 24),
+        Divider(color: Colors.grey.shade200, thickness: 1),
+        const SizedBox(height: 16),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text('3D Model',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 420,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: _ModelViewer3D(glbFile: _glbFile!),
+          ),
+        ),
+      ],
+
       const SizedBox(height: 32),
     ]),
   );
 
-  // ── Result view ────────────────────────────────────────────
-  Widget _resultView() {
-    return Column(
-      children: [
-        // Tab bar
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(children: [
-            _ResultTab(label: '⚙️ Setup', index: 0, current: _resultTab,
-                onTap: (i) => setState(() => _resultTab = i)),
-            const SizedBox(width: 8),
-            if (_tryon2dBytes != null)
-              _ResultTab(label: '🖼️ 2D Result', index: 1, current: _resultTab,
-                  onTap: (i) => setState(() => _resultTab = i)),
-            const SizedBox(width: 8),
-            if (_glbFile != null)
-              _ResultTab(label: '🧊 3D Model', index: 2, current: _resultTab,
-                  onTap: (i) => setState(() => _resultTab = i)),
-          ]),
-        ),
-        Divider(height: 1, color: Colors.grey.shade200),
-
-        // Tab content
-        Expanded(child: _tabContent()),
-      ],
-    );
-  }
-
-  Widget _tabContent() {
-    switch (_resultTab) {
-      case 0: return _setupView();
-      case 1: return _Preview2D(bytes: _tryon2dBytes!);
-      case 2: return _ModelViewer3D(glbFile: _glbFile!);
-      default: return const SizedBox.shrink();
-    }
-  }
-
-  Widget _divider() => Divider(color: Colors.grey.shade200, thickness: 1);
-}
-
-// ─────────────────────────────────────────────────────────────
-// 2D PREVIEW
-// ─────────────────────────────────────────────────────────────
-class _Preview2D extends StatelessWidget {
-  final Uint8List bytes;
-  const _Preview2D({required this.bytes});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          const Text('2D Try-On Result',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.memory(bytes, fit: BoxFit.contain),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Tap the "3D Model" tab to see the full 3D result.',
-            style: TextStyle(color: Colors.grey, fontSize: 13),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -689,31 +639,3 @@ class _ActionButtons extends StatelessWidget {
   );
 }
 
-class _ResultTab extends StatelessWidget {
-  final String label;
-  final int index, current;
-  final void Function(int) onTap;
-  const _ResultTab({required this.label, required this.index,
-      required this.current, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final active = index == current;
-    return GestureDetector(
-      onTap: () => onTap(index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? Colors.black : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(label,
-            style: TextStyle(
-              color: active ? Colors.white : Colors.grey.shade700,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            )),
-      ),
-    );
-  }
-}
